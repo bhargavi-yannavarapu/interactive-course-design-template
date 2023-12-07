@@ -1,0 +1,278 @@
+<!-- course_design_app/templates/course_design.html -->
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="{% static 'css/styles.css' %}"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            background-color: #f1f1f1;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+
+        .info-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+            min-height: 80px;
+            width: calc(25% - 20px); /* 25% width with 20px margin on both sides */
+            box-sizing: border-box;
+        }
+
+        .terms {
+            flex: 1;
+            margin-right: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center; /* Center terms horizontally */
+        }
+
+        .term {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+            min-height: 100px;
+            width: calc(50% - 20px); /* 50% width with 20px margin on both sides */
+            box-sizing: border-box;
+        }
+
+        .course {
+            border: 1px solid #ddd;
+            padding: 8px;
+            margin: 8px 0;
+            cursor: move;
+        }
+
+        #all-courses {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 100px;
+            width: 100%;
+            order: 999; /* Place it at the end */
+        }
+
+        .notes {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 100px;
+            width: 200px;
+            margin-left: auto; /* Push it to the right */
+        }
+
+        /* #advisingNotes {
+            width: 100%;
+            height: 400px;
+            resize: none;
+        } */
+
+        .download-button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .download-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #creditCalculator {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 100px;
+            width: 200px;
+            margin-left: auto; /* Push it to the right */
+            transition: background-color 0.3s ease; /* Add transition for a smoother effect */
+        }
+
+        #totalCredits {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* Add a red background when total credits exceed 30 */
+        #creditCalculator.over-limit {
+            background-color: #ffcccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="creditCalculator">
+        <h2>Credit Calculator</h2>
+        <p>Total Credits: <span id="totalCredits">0</span></p>
+    </div> 
+
+<div class="header">
+    <h1>Interactive Course Design</h1>
+    <!-- Add text boxes for student name, banner ID, major, and advisor name -->
+    <div>
+        <label for="studentName">Student Name:</label>
+        <input type="text" id="studentName" name="studentName">
+
+        <label for="bannerId">Banner ID:</label>
+        <input type="text" id="bannerId" name="bannerId">
+
+        <label for="major">Major:</label>
+        <input type="text" id="major" name="major">
+
+        <label for="advisorName">Advisor Name:</label>
+        <input type="text" id="advisorName" name="advisorName">
+    </div>
+</div>
+
+<div class="container">
+    <div class="terms">
+        {% for term in terms %}
+            <div id="{{ term }}" class="term" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <h3>{{ term }}</h3>
+                <!-- Courses for this term will be dynamically added here -->
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="all-courses" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <h3>All Courses</h3>
+        {% for course in courses %}
+            <div id="{{ course.id }}" ondrop="drop(event)" class="course" draggable="true" ondragstart="drag(event)">
+                {{ course.name }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- <div class="notes">
+        <h2>Advising Notes</h2>
+        <textarea id="advisingNotes" rows="40" cols="20" placeholder="Add advising notes here..."></textarea>
+    </div> -->
+</div>
+
+</div>
+ 
+<div class="download-button-container">
+    <button class="download-button" onclick="downloadPDF()">Download as PDF</button>
+</div>
+
+<script>
+    //Variable to store the current dragging course ID
+    var draggedCourseId = null;
+
+    function allowDrop(event) {
+        event.preventDefault();
+    draggedCourseId = event.dataTransfer.getData("text");
+    var draggedCourse = document.getElementById(draggedCourseId);
+    var targetTermId = event.target.id;
+
+}
+
+    function drag(event) {
+        draggedCourseId = event.target.id;
+        draggedCourseName = event.target.name;
+        console.log("Course being dragged is " + draggedCourseId);
+        event.dataTransfer.setData("text", draggedCourseId);
+    }
+
+    function drop(event) {
+    event.preventDefault();
+    var data = event.dataTransfer.getData("text");
+    var draggedElement = document.getElementById(data);
+    var target = event.target;
+
+    // Check if the drop target is a term or the "All Courses" section
+    if (target.classList.contains("term") || target.id === "all-courses") {
+        // Check if the course is allowed to be dropped in this term
+        var courseId = data;
+        var termId = target.id;
+        var gradeInput = document.getElementById("grade_" + courseId).value;
+        console.log("Course ID", courseId)
+        console.log("term id ", termId)
+
+        // Send courseId, termId, and grade to the server using AJAX or form submission
+        sendGradeToServer(courseId, termId, gradeInput);
+
+        if (!isCourseAvailableInTerm(courseId, termId)) {
+            alert("This course is not available in the selected term.");
+            return; // Stop the execution if the course is not allowed in this term
+        }
+
+        target.appendChild(draggedElement);
+        // Update the term in the database - form submission
+        // Perform an AJAX request or form submission to update the course term in the database
+    }
+}
+
+function isCourseAvailableInTerm(courseId, termId) {
+    // Check if the course is allowed in the selected term
+    if(termId == "6 - Summer" && ["28", "29"].includes(courseId)) {
+        return true;
+    }
+    else if (termId == "6 - Summer" || ["28", "29"].includes(courseId)) {
+        return false;
+    } 
+    else if (termId == "5 - Final Assessment" && ["36"].includes(courseId)) {
+        return true;
+    } 
+    else if (termId == "5 - Final Assessment" || ["36"].includes(courseId)) {
+        return false;
+    } 
+    else {
+        return true;
+    }
+}
+
+function downloadPDF() {
+    // Get selected terms
+    const selectedTerms = Array.from(document.querySelectorAll('.term')).map(term => term.innerText);
+    const csrftoken = getCookie('csrftoken');
+
+    // POST request to generate and retrieve the PDF content
+    fetch('/generate_pdf/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrftoken
+        },
+        body:
+        
+        new URLSearchParams({
+        studentName: document.getElementById('studentName').value,
+        bannerId: document.getElementById('bannerId').value,
+        major: document.getElementById('major').value,
+        advisorName: document.getElementById('advisorName').value,
+        selectedTerms: selectedTerms
+    }),
+    })
+    .then(response => response.json())
+        .then(data => {
+            const pdfContent = atob(data.pdf_content_base64);
+
+            const blob = new Blob([new Uint8Array([...pdfContent].map(c => c.charCodeAt(0)))], { type: 'application/pdf' });
+
+            // Create a link element to trigger the download
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = 'course_design.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
+</body>
+</html>
